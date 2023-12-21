@@ -1,74 +1,60 @@
+import sys
 import os
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QTextEdit, QFileDialog, QWidget
 import json
 import datetime
 import pytz
 import win32file, win32con
-import tkinter as tk
-from tkinter import filedialog
 
-class MyApp:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("Set time on photo dowanload from google photos")
-        self.master.geometry('1400x900+250+50')
-        # Choose directory button
-        self.create_widgets()
+class MyWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-        # Store chosen directory
-        self.chosen_dir = None
+        self.init_ui()
 
-    def create_widgets(self):
-        # Choose directory button
+    def init_ui(self):
+        self.setWindowTitle('Set time on photo dowanload from google photos')
+        self.setGeometry(250, 50, 1400, 900)
 
-        # Log file output with scrollbar
-        self.log_text = self.create_text_widget(25, 150)
-        self.log_scrollbar = self.create_scrollbar(self.log_text)
-        self.log_text.configure(yscrollcommand=self.log_scrollbar.set)
-        self.log_scrollbar.pack(side="right", fill="y")
-        self.log_text.pack(expand=True, fill="x",pady=50)
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
 
-        # Error output with scrollbar
-        self.error_text = self.create_text_widget(25, 150, fg="red")
-        self.error_scrollbar = self.create_scrollbar(self.error_text)
-        self.error_text.configure(yscrollcommand=self.error_scrollbar.set)
-        self.error_scrollbar.pack(side="right", fill="y")
-        self.error_text.pack(expand=True, fill="both")
+        # Layout
+        layout = QVBoxLayout()
+
+        # Buttons
+        self.button_choose_folder = QPushButton('Choose Folder', self)
+        self.button_choose_folder.clicked.connect(self.choose_folder)
+        layout.addWidget(self.button_choose_folder)
+
+        self.button_start_function = QPushButton('Start Function', self)
+        self.button_start_function.clicked.connect(self.start_set_time)
+        layout.addWidget(self.button_start_function)
         
-        self.choose_dir_button = tk.Button(
-            self.master, text="Choose Directory", command=self.choose_directory,
-            padx=100, pady=12
-        )
-        self.choose_dir_button.place(x=20, y=10)
+        # Log Text Boxes
+        self.logOK = QTextEdit(self)
+        self.logFail = QTextEdit(self)
+        self.logOK.setReadOnly(True)
+        self.logFail.setReadOnly(True)
+        layout.addWidget(self.logOK)
+        layout.addWidget(self.logFail)
 
-        # Set time button
-        self.set_time_button = tk.Button(
-            self.master, text="Set Time", command=self.set_time,
-            padx=100, pady=12
-        )
-        self.set_time_button.place(x=360, y=10)
+        # Set the layout to the central widget
+        self.central_widget.setLayout(layout)
 
-    def create_text_widget(self, height, width, **kwargs):
-        text_widget = tk.Text(self.master, height=height, width=width, **kwargs)
-        text_widget.pack_propagate(False)  # Prevents the Text widget from resizing itself
-        return text_widget
-
-    def create_scrollbar(self, text_widget):
-        scrollbar = tk.Scrollbar(self.master, command=text_widget.yview)
-        return scrollbar
-
-    def choose_directory(self):
-        self.chosen_dir = filedialog.askdirectory()
-        if self.chosen_dir:
+    def choose_folder(self):
+        self.folder_path = QFileDialog.getExistingDirectory(self, 'Choose Folder', os.path.expanduser("~"))
+        if self.folder_path:
             # Clear the log and error text widgets
-            self.log_text.delete(1.0, tk.END)
-            self.error_text.delete(1.0, tk.END)
-            self.log_message(f"Chosen directory: {self.chosen_dir}")
+            self.logOK.clear()
+            self.logFail.clear()
+            self.log_message(f"Chosen directory: {self.folder_path}")
         else:
             self.log_message("No directory chosen.")
 
-    def set_time(self):
-        if self.chosen_dir:
-            self.process_directory(self.chosen_dir)
+    def start_set_time(self):
+        if self.folder_path:
+            self.process_directory(self.folder_path)
         else:
             self.log_message("Please choose a directory first.")
 
@@ -118,32 +104,24 @@ class MyApp:
         except Exception as e:
             log_message = f"Error processing file: {file_path}\nError details: {str(e)}"
             self.log_message(log_message, is_error=True)
-
+    
     def log_message(self, message, is_error=False):
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_entry = f"[{timestamp}] {message}\n"
-#
-        if is_error:
-            self.error_text.insert(tk.END, log_entry)
-        else:
-            self.log_text.insert(tk.END, log_entry)
-
-
-    def log_message(self, message, is_error=False):
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logfiledate = datetime.datetime.now().strftime('%Y%m%d')
         log_entry = f"[{timestamp}] {message}\n"
 
         if is_error:
-            self.error_text.insert(tk.END, log_entry)
+            self.logFail.insertPlainText(log_entry)
         else:
-            self.log_text.insert(tk.END, log_entry)
+            self.logOK.insertPlainText(log_entry)
 
         # Save log entry to a file
-        log_file_path = "error_log.txt" if is_error else "info_log.txt"
+        log_file_path = "error_"+logfiledate+".log" if is_error else "info_"+logfiledate+".log"
         with open(log_file_path, "a") as log_file:
             log_file.write(log_entry)
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = MyApp(root)
-    root.mainloop()
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MyWindow()
+    window.show()
+    sys.exit(app.exec_())
