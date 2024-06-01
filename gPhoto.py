@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QTextEdit, QFileDialog, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QTextEdit, QFileDialog, QWidget
 import json
 import datetime
 import pytz
@@ -13,7 +13,7 @@ class MyWindow(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle('Set time on photo dowanload from google photos')
+        self.setWindowTitle('Set time on photo download from Google Photos')
         self.setGeometry(250, 50, 1400, 900)
 
         self.central_widget = QWidget(self)
@@ -27,7 +27,7 @@ class MyWindow(QMainWindow):
         self.button_choose_folder.clicked.connect(self.choose_folder)
         layout.addWidget(self.button_choose_folder)
 
-        self.button_start_function = QPushButton('Start Function', self)
+        self.button_start_function = QPushButton('Set date-time on files', self)
         self.button_start_function.clicked.connect(self.start_set_time)
         layout.addWidget(self.button_start_function)
         
@@ -43,6 +43,7 @@ class MyWindow(QMainWindow):
         self.central_widget.setLayout(layout)
 
     def choose_folder(self):
+        # Open a dialog to choose a folder and store the path
         self.folder_path = QFileDialog.getExistingDirectory(self, 'Choose Folder', os.path.expanduser("~"))
         if self.folder_path:
             # Clear the log and error text widgets
@@ -53,12 +54,15 @@ class MyWindow(QMainWindow):
             self.log_message("No directory chosen.")
 
     def start_set_time(self):
-        if self.folder_path:
-            self.process_directory(self.folder_path)
-        else:
-            self.log_message("Please choose a directory first.")
+        # Start the process of setting the date-time on files
+        try:
+            if self.folder_path:
+                self.process_directory(self.folder_path)
+        except Exception as e:
+            self.log_message(f"Check chosen directory. Error: {e}", is_error=True)
 
     def process_directory(self, directory_path):
+        # Process all files in the chosen directory
         self.log_message(f"Processing files in directory: {directory_path}")
 
         for root, dirs, files in os.walk(directory_path):
@@ -68,13 +72,14 @@ class MyWindow(QMainWindow):
                     self.process_json_file(json_file_path, root)
 
     def process_json_file(self, file_path, dir_path):
+        # Process individual JSON files to set the date-time on corresponding photo files
         try:
             with open(file_path, 'r') as json_file:
                 data = json.load(json_file)
                 title = os.path.splitext(os.path.basename(file_path))[0]
                 photo_taken_timestamp = data.get('photoTakenTime', {}).get('timestamp')
                 formatted_date = datetime.datetime.utcfromtimestamp(int(photo_taken_timestamp))
-                log_message = f"File not found000000: {title}"
+                log_message = f"File not found: {title}"
                 if title:
                     file_name = os.path.join(dir_path, title)
 
@@ -94,7 +99,7 @@ class MyWindow(QMainWindow):
                         win32file.SetFileTime(winfile, local_datetime, local_datetime, local_datetime)
                         winfile.close()
 
-                        log_message = f"File file_attributes: {file_name} \tset time: {local_datetime}"
+                        log_message = f"File attributes set: {file_name} \tset time: {local_datetime}"
                         self.log_message(log_message)
 
                     else:
@@ -106,6 +111,7 @@ class MyWindow(QMainWindow):
             self.log_message(log_message, is_error=True)
     
     def log_message(self, message, is_error=False):
+        # Log messages in the appropriate text box and save them to a log file
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logfiledate = datetime.datetime.now().strftime('%Y%m%d')
         log_entry = f"[{timestamp}] {message}\n"
@@ -124,4 +130,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MyWindow()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
